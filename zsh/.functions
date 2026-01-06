@@ -143,6 +143,45 @@ setdb() {
     echo "Updated: $newline"
 }
 
+# Interactive project menu
+setup() {
+    local options=(
+        "xdebug: $([ -n \"$XDEBUG_SESSION\" ] && echo 'OFF' || echo 'ON')"
+        "env: dev"
+        "env: test"
+        "env: prod"
+        "env: clear"
+        "db: migrate"
+        "db: reset (drop + migrate + fixtures)"
+        "db: set name"
+        "server: start"
+        "server: stop"
+        "docker: up"
+        "docker: down"
+        "cache: clear"
+    )
+
+    local choice=$(printf '%s\n' "${options[@]}" | fzf --height=15 --reverse --prompt="setup> ")
+    [[ -z "$choice" ]] && return 0
+
+    case "$choice" in
+        "xdebug: ON")  phpstorm && echo "Xdebug ON" ;;
+        "xdebug: OFF") xdebugoff && echo "Xdebug OFF" ;;
+        "env: dev")    export APP_ENV=dev && echo "APP_ENV=dev" ;;
+        "env: test")   export APP_ENV=test && echo "APP_ENV=test" ;;
+        "env: prod")   export APP_ENV=prod && echo "APP_ENV=prod" ;;
+        "env: clear")  clearenv ;;
+        "db: migrate") bin/console doctrine:migrations:migrate -n ;;
+        "db: reset"*)  dbc ;;
+        "db: set name") setdb ;;
+        "server: start") ss ;;
+        "server: stop")  sss ;;
+        "docker: up")   docker compose up -d ;;
+        "docker: down") docker compose down ;;
+        "cache: clear") cc ;;
+    esac
+}
+
 # Update dotfiles from remote
 dotupdate() {
     echo "Updating dotfiles..."

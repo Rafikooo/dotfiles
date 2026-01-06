@@ -26,14 +26,56 @@ when = "git rev-parse --git-dir 2>/dev/null && ! (git diff --quiet 2>/dev/null &
 format = "[$output]($style)\n"
 style = "bold yellow"
 
-# Context line: ssh | env | db
+# Context line: serve | ssh | env | db
 [custom.context]
 command = '''
 out=""
 
+# Symfony server indicator (fast file-based check)
+pidfile=$(grep -l "\"dir\": \"$PWD\"" ~/.symfony5/var/*/*.pid 2>/dev/null | head -1)
+if [ -n "$pidfile" ]; then
+  pid=$(grep -o '"pid": [0-9]*' "$pidfile" | grep -o '[0-9]*')
+  if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+    # Get domain from proxy.json (extract key from line containing this path)
+    domain=$(grep "\"$PWD\"" ~/.symfony5/proxy.json 2>/dev/null | sed -E 's/.*"([^"]+)":.*/\1/')
+    if [ -n "$domain" ]; then
+      url="https://${domain}.wip"
+      out=$(printf 'server: \033]8;;%s\007%s\033]8;;\007' "$url" "${domain}.wip")
+    else
+      out="server"
+    fi
+  fi
+fi
+
+# Docker compose indicator (fast: filter by dir name)
+if [ -f docker-compose.yml ] || [ -f docker-compose.yaml ] || [ -f compose.yml ] || [ -f compose.yaml ]; then
+  project=$(basename "$PWD" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]-')
+  ports=$(docker ps --filter "name=$project" --format '{{.Ports}}' 2>/dev/null)
+  if [ -n "$ports" ]; then
+    [ -n "$out" ] && out="$out | "
+    # Try to find web port (80, 443, 8080, 8000)
+    webport=$(echo "$ports" | grep -oE '0\.0\.0\.0:([0-9]+)->(80|443|8080|8000)/' | head -1 | sed 's/0\.0\.0\.0:\([0-9]*\).*/\1/')
+    if [ -n "$webport" ]; then
+      url="http://localhost:$webport"
+      [ "$webport" = "443" ] && url="https://localhost"
+      [ "$webport" = "80" ] && url="http://localhost"
+      out="${out}$(printf 'docker: \033]8;;%s\007localhost:%s\033]8;;\007' "$url" "$webport")"
+    else
+      out="${out}docker"
+    fi
+  fi
+fi
+
 # SSH indicator
 if [ -n "$SSH_CONNECTION" ]; then
-  out="ssh: $(hostname -s)"
+  [ -n "$out" ] && out="$out | "
+  out="${out}ssh: $(hostname -s)"
+fi
+
+# Screen indicator
+if [ -n "$STY" ]; then
+  [ -n "$out" ] && out="$out | "
+  out="${out}screen"
 fi
 
 # Get APP_ENV (cascade)
@@ -98,7 +140,7 @@ fi
 
 echo "$out"
 '''
-when = "test -f .env -o -f .env.local -o -n \"$SSH_CONNECTION\""
+when = "test -f .env -o -f .env.local -o -n \"$SSH_CONNECTION\" -o -n \"$STY\""
 format = "[$output]($style)"
 style = "dimmed white"
 
