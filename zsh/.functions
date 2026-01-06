@@ -116,3 +116,16 @@ clearenv() {
     unset APP_ENV
     echo "APP_ENV cleared (using .env defaults)"
 }
+
+# Update dotfiles from remote
+dotupdate() {
+    echo "Updating dotfiles..."
+    cd ~/.dotfiles && git pull
+
+    # Restow all (in case new files added)
+    stow -R zsh vim git config bash 2>/dev/null
+
+    # Reload
+    source ~/.zshrc
+    echo "Done! Dotfiles updated and reloaded."
+}
