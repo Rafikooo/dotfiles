@@ -117,6 +117,29 @@ clearenv() {
     echo "APP_ENV cleared (using .env defaults)"
 }
 
+# Interactive database name change in .env.local
+setdb() {
+    [[ ! -f .env.local ]] && { echo "No .env.local found"; return 1; }
+
+    local current=$(grep '^DATABASE_URL=' .env.local | head -1)
+    echo "Current: $current"
+    echo ""
+
+    read "newdb?New database name (or empty to cancel): "
+    [[ -z "$newdb" ]] && { echo "Cancelled"; return 0; }
+
+    # Get current URL structure, replace db name
+    local prefix=$(echo "$current" | sed -E 's|(DATABASE_URL=.*/)([^?]+)(.*)|\1|')
+    local suffix=$(echo "$current" | sed -E 's|(DATABASE_URL=.*/)([^?]+)(.*)|\3|')
+
+    local newline="${prefix}${newdb}${suffix}"
+
+    # Replace in .env.local
+    sed -i '' "s|^DATABASE_URL=.*|$newline|" .env.local
+
+    echo "Updated: $newline"
+}
+
 # Update dotfiles from remote
 dotupdate() {
     echo "Updating dotfiles..."
