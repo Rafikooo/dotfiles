@@ -1,5 +1,6 @@
 export ZSH="$HOME/.oh-my-zsh"
 export DEFAULT_USER="$(whoami)"
+DISABLE_AUTO_TITLE="true"
 
 plugins=(git zsh-autosuggestions)
 
