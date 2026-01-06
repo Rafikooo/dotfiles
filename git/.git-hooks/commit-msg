@@ -1,0 +1,6 @@
+#!/bin/sh
+if grep -qiE "anthropic|claude code|co-authored-by.*claude" "$1"; then
+  echo "❌ Commit rejected - contains Claude attribution"
+  echo "Edit your message and try again"
+  exit 1
+fi
