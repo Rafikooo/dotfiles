@@ -95,3 +95,24 @@ phpstorm() {
     export XDEBUG_CONFIG="idkey=PHPSTORM"
     export XDEBUG_SESSION=xdebug_is_great
 }
+
+xdebugoff() {
+    unset XDEBUG_SESSION_START
+    unset XDEBUG_CONFIG
+    unset XDEBUG_SESSION
+}
+
+# Interactive env selector
+setenv() {
+    local env=$(echo -e "dev\ntest\nprod" | fzf --height=5 --prompt="APP_ENV: ")
+    if [ -n "$env" ]; then
+        export APP_ENV="$env"
+        echo "APP_ENV=$env"
+    fi
+}
+
+# Clear env (use .env defaults)
+clearenv() {
+    unset APP_ENV
+    echo "APP_ENV cleared (using .env defaults)"
+}

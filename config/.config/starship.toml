@@ -53,8 +53,10 @@ if [ -n "$env" ]; then
   out="${out}env: $env"
 fi
 
-# Get database name - handle quotes and optional query string
+# Get database info
 db=""
+dbtype=""
+dbhost=""
 dbline=""
 if [ -f .env.local ] && grep -q '^DATABASE_URL=' .env.local; then
   dbline=$(grep '^DATABASE_URL=' .env.local | head -1)
@@ -63,7 +65,14 @@ elif [ -f .env ] && grep -q '^DATABASE_URL=' .env; then
 fi
 
 if [ -n "$dbline" ]; then
-  # Remove DATABASE_URL= prefix, quotes, and extract db name
+  # Extract db type (mysql/pgsql/postgresql)
+  dbtype=$(echo "$dbline" | sed -E 's/.*=["'"'"']?(mysql|pgsql|postgresql).*/\1/' | head -1)
+  [ "$dbtype" = "postgresql" ] && dbtype="pgsql"
+
+  # Extract host
+  dbhost=$(echo "$dbline" | tr -d '"' | sed -E 's/.*@([^:/]+).*/\1/')
+
+  # Extract db name
   db=$(echo "$dbline" | sed 's/^DATABASE_URL=//' | tr -d '"' | sed -E 's|.*[/@]([^?/@]+)(\?.*)?$|\1|')
 fi
 
@@ -78,7 +87,13 @@ if [ -n "$db" ]; then
   fi
 
   [ -n "$out" ] && out="$out | "
-  out="${out}db: $db"
+
+  # Show: type/dbname or docker:type/dbname
+  if [ "$dbhost" != "127.0.0.1" ] && [ "$dbhost" != "localhost" ]; then
+    out="${out}db: ${dbhost}:${dbtype}/${db}"
+  else
+    out="${out}db: ${dbtype}/${db}"
+  fi
 fi
 
 echo "$out"
