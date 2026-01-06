@@ -43,3 +43,7 @@ alias screenshot='adb -s $(adb devices | grep "device$" | head -1 | cut -f1) exe
 
 # iTerm window/tab naming
 n() { echo -ne "\033]0;$1\007"; }
+
+# Utils - count lines/occurrences
+alias countlines='wc -l'
+alias count='wc -l'

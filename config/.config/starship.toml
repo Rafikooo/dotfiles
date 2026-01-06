@@ -1,35 +1,43 @@
 format = """
 $directory\
-$git_branch\
-$git_status\
-$line_break\
 $custom\
-$line_break\
 $character"""
 
 [directory]
 truncation_length = 3
 truncate_to_repo = false
 format = "[$path]($style) "
-
-[git_branch]
-symbol = ""
-format = "[$symbol$branch]($style) "
-
-[git_status]
-format = '([$all_status$ahead_behind]($style))'
+style = "bold blue"
 
 [character]
-success_symbol = "[❯](bold green)"
-error_symbol = "[❯](bold red)"
+success_symbol = "\n[❯](bold green)"
+error_symbol = "\n[❯](bold red)"
 
-# Combined: env | db (only shown in project directories)
+# Branch: green if clean, yellow if dirty
+[custom.branch_clean]
+command = "git branch --show-current"
+when = "git rev-parse --git-dir 2>/dev/null && git diff --quiet 2>/dev/null && git diff --cached --quiet 2>/dev/null"
+format = "[$output]($style)\n"
+style = "bold green"
+
+[custom.branch_dirty]
+command = "git branch --show-current"
+when = "git rev-parse --git-dir 2>/dev/null && ! (git diff --quiet 2>/dev/null && git diff --cached --quiet 2>/dev/null)"
+format = "[$output]($style)\n"
+style = "bold yellow"
+
+# Context line: ssh | env | db
 [custom.context]
-command = """
-env=""
-db=""
+command = '''
+out=""
+
+# SSH indicator
+if [ -n "$SSH_CONNECTION" ]; then
+  out="ssh: $(hostname -s)"
+fi
 
 # Get APP_ENV (cascade)
+env=""
 if [ -n "$APP_ENV" ]; then
   env="$APP_ENV"
 elif grep -q '^APP_ENV=' .env.local 2>/dev/null; then
@@ -40,31 +48,40 @@ elif grep -q '^APP_ENV=' .env 2>/dev/null; then
   env=$(grep '^APP_ENV=' .env | cut -d= -f2)
 fi
 
+if [ -n "$env" ]; then
+  [ -n "$out" ] && out="$out | "
+  out="${out}env: $env"
+fi
+
 # Get database name
+db=""
 if [ -f .env.local ] && grep -q DATABASE_URL .env.local; then
-  db=$(grep -E '^DATABASE_URL=' .env.local | sed -E 's|.*[/@]([^?/@]+)\\?.*|\\1|' | head -1)
+  db=$(grep -E '^DATABASE_URL=' .env.local | sed -E 's|.*[/@]([^?/@]+)\?.*|\1|' | head -1)
 elif [ -f .env ] && grep -q DATABASE_URL .env; then
-  db=$(grep -E '^DATABASE_URL=' .env | sed -E 's|.*[/@]([^?/@]+)\\?.*|\\1|' | head -1)
+  db=$(grep -E '^DATABASE_URL=' .env | sed -E 's|.*[/@]([^?/@]+)\?.*|\1|' | head -1)
 fi
 
-# Resolve %kernel.environment% parameter
-if echo "$db" | grep -q '%kernel.environment%'; then
+# Resolve parameters
+if [ -n "$db" ]; then
   db=$(echo "$db" | sed "s/%kernel.environment%/$env/g")
-fi
 
-# Build output
-out=""
-[ -n "$env" ] && out="env: $env"
-[ -n "$db" ] && [ -n "$out" ] && out="$out | "
-[ -n "$db" ] && out="${out}db: $db"
+  # Resolve ${GIT_BRANCH}
+  if echo "$db" | grep -q 'GIT_BRANCH'; then
+    branch=$(git branch --show-current 2>/dev/null || echo "")
+    db=$(echo "$db" | sed "s/\${GIT_BRANCH}/$branch/g")
+  fi
+
+  [ -n "$out" ] && out="$out | "
+  out="${out}db: $db"
+fi
 
 echo "$out"
-"""
-when = "test -f .env -o -f .env.local"
+'''
+when = "test -f .env -o -f .env.local -o -n \"$SSH_CONNECTION\""
 format = "[$output]($style)"
 style = "dimmed white"
 
-# Xdebug indicator (append to context line)
+# Xdebug indicator
 [custom.xdebug]
 command = "echo ' | xdebug'"
 when = "test -n \"$XDEBUG_SESSION\""
