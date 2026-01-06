@@ -2,7 +2,6 @@
 set -e
 
 DOTFILES="$HOME/.dotfiles"
-REPO="git@github.com:Rafikooo/dotfiles.git"
 
 echo "=== Dotfiles installer ==="
 
@@ -17,49 +16,6 @@ else
     OS="linux"
     echo "Detected: Linux"
 fi
-
-# GitHub SSH setup
-setup_github_ssh() {
-    echo ""
-    echo "=== GitHub SSH setup ==="
-
-    if ssh -T git@github.com 2>&1 | grep -q "successfully authenticated"; then
-        echo "✓ GitHub SSH already configured"
-        return 0
-    fi
-
-    echo "SSH key not configured for GitHub"
-
-    # Check if key exists
-    if [[ ! -f ~/.ssh/id_ed25519 ]]; then
-        echo "Generating new SSH key..."
-        read -p "Email for SSH key: " email
-        ssh-keygen -t ed25519 -C "$email" -f ~/.ssh/id_ed25519
-    fi
-
-    # Start ssh-agent
-    eval "$(ssh-agent -s)" &>/dev/null
-    ssh-add ~/.ssh/id_ed25519 2>/dev/null
-
-    echo ""
-    echo "=== Copy this public key to GitHub ==="
-    echo "https://github.com/settings/ssh/new"
-    echo ""
-    cat ~/.ssh/id_ed25519.pub
-    echo ""
-
-    read -p "Press Enter after adding key to GitHub..."
-
-    # Test connection
-    if ssh -T git@github.com 2>&1 | grep -q "successfully authenticated"; then
-        echo "✓ GitHub SSH configured successfully"
-    else
-        echo "✗ SSH still not working. Check your key on GitHub."
-        exit 1
-    fi
-}
-
-setup_github_ssh
 
 # Install dependencies
 install_deps() {
