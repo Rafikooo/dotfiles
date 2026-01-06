@@ -28,7 +28,7 @@ style = "bold yellow"
 
 # Context line: serve | ssh | env | db
 [custom.context]
-command_timeout = 1000
+ignore_timeout = true
 command = '''
 out=""
 
