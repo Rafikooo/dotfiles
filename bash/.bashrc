@@ -30,6 +30,9 @@ alias gl='git pull'
 alias d='docker'
 alias dc='docker compose'
 
+# Utils
+alias reload='source ~/.bashrc'
+
 # Source secrets
 [[ -f ~/.secrets ]] && source ~/.secrets
 

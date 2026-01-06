@@ -1,5 +1,4 @@
 #!/bin/bash
-set -e
 
 REPO="git@github.com:Rafikooo/dotfiles.git"
 DOTFILES="$HOME/.dotfiles"
@@ -19,15 +18,12 @@ if [[ -d "$DOTFILES" ]]; then
 fi
 
 # GitHub SSH check/setup
-setup_ssh() {
-    echo ""
-    echo "=== GitHub SSH Check ==="
+echo ""
+echo "=== GitHub SSH Check ==="
 
-    if ssh -T git@github.com 2>&1 | grep -q "successfully authenticated"; then
-        echo "✓ GitHub SSH works"
-        return 0
-    fi
-
+if ssh -T git@github.com 2>&1 | grep -q "successfully authenticated"; then
+    echo "✓ GitHub SSH works"
+else
     echo "✗ GitHub SSH not configured"
 
     # Create .ssh dir if needed
@@ -69,14 +65,12 @@ setup_ssh() {
             echo "✗ Still not working. Make sure you added the key."
         fi
     done
-}
-
-setup_ssh
+fi
 
 # Clone repo
 echo ""
 echo "=== Cloning dotfiles ==="
-git clone "$REPO" "$DOTFILES"
+git clone "$REPO" "$DOTFILES" || { echo "Clone failed"; exit 1; }
 
 # Run installer
 cd "$DOTFILES"
@@ -84,4 +78,4 @@ cd "$DOTFILES"
 
 echo ""
 echo "=== Bootstrap complete ==="
-echo "Run: source ~/.zshrc"
+echo "Reload your shell: source ~/.bashrc (or ~/.zshrc)"
