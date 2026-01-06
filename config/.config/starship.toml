@@ -1,76 +1,72 @@
-# Two-line prompt with project context
-
 format = """
 $directory\
 $git_branch\
 $git_status\
-$fill\
-$php\
-$nodejs\
-$python\
-$docker_context\
+$line_break\
 $custom\
 $line_break\
 $character"""
 
-[fill]
-symbol = " "
-
 [directory]
 truncation_length = 3
 truncate_to_repo = false
+format = "[$path]($style) "
 
 [git_branch]
-symbol = " "
+symbol = ""
+format = "[$symbol$branch]($style) "
 
 [git_status]
-format = '([$all_status$ahead_behind]($style) )'
-
-[php]
-symbol = " "
-format = "[$symbol$version]($style) "
-detect_files = ["composer.json", ".php-version", "*.php"]
-
-[nodejs]
-symbol = " "
-format = "[$symbol$version]($style) "
-
-[python]
-symbol = " "
-format = "[$symbol$version]($style) "
-
-[docker_context]
-symbol = " "
-format = "[$symbol$context]($style) "
+format = '([$all_status$ahead_behind]($style))'
 
 [character]
 success_symbol = "[❯](bold green)"
 error_symbol = "[❯](bold red)"
 
-# Custom: detect Sylius project
-[custom.sylius]
-command = "echo ''"
-when = "test -f composer.json && grep -q sylius composer.json"
-format = "[$output]($style) "
-style = "bold blue"
+# Combined: env | db (only shown in project directories)
+[custom.context]
+command = """
+env=""
+db=""
 
-# Custom: detect Expo/React Native project
-[custom.expo]
-command = "echo ''"
-when = "test -f app.json && grep -q expo app.json"
-format = "[$output]($style) "
-style = "bold cyan"
+# Get APP_ENV (cascade)
+if [ -n "$APP_ENV" ]; then
+  env="$APP_ENV"
+elif grep -q '^APP_ENV=' .env.local 2>/dev/null; then
+  env=$(grep '^APP_ENV=' .env.local | cut -d= -f2)
+elif grep -q '^APP_ENV=' .env.test.local 2>/dev/null; then
+  env=$(grep '^APP_ENV=' .env.test.local | cut -d= -f2)
+elif grep -q '^APP_ENV=' .env 2>/dev/null; then
+  env=$(grep '^APP_ENV=' .env | cut -d= -f2)
+fi
 
-# Custom: show DATABASE from .env.local
-[custom.database]
-command = "grep DATABASE_URL .env.local 2>/dev/null | sed 's/.*\\/\\([^?]*\\).*/\\1/' | head -1"
-when = "test -f .env.local"
-format = "[ $output]($style) "
-style = "yellow"
+# Get database name
+if [ -f .env.local ] && grep -q DATABASE_URL .env.local; then
+  db=$(grep -E '^DATABASE_URL=' .env.local | sed -E 's|.*[/@]([^?/@]+)\\?.*|\\1|' | head -1)
+elif [ -f .env ] && grep -q DATABASE_URL .env; then
+  db=$(grep -E '^DATABASE_URL=' .env | sed -E 's|.*[/@]([^?/@]+)\\?.*|\\1|' | head -1)
+fi
 
-# Custom: xdebug status
+# Resolve %kernel.environment% parameter
+if echo "$db" | grep -q '%kernel.environment%'; then
+  db=$(echo "$db" | sed "s/%kernel.environment%/$env/g")
+fi
+
+# Build output
+out=""
+[ -n "$env" ] && out="env: $env"
+[ -n "$db" ] && [ -n "$out" ] && out="$out | "
+[ -n "$db" ] && out="${out}db: $db"
+
+echo "$out"
+"""
+when = "test -f .env -o -f .env.local"
+format = "[$output]($style)"
+style = "dimmed white"
+
+# Xdebug indicator (append to context line)
 [custom.xdebug]
-command = "echo ''"
+command = "echo ' | xdebug'"
 when = "test -n \"$XDEBUG_SESSION\""
-format = "[$output]($style) "
+format = "[$output]($style)"
 style = "bold red"
