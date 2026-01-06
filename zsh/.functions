@@ -1,0 +1,148 @@
+# Git functions
+wip() {
+    git add .
+    git commit -m "WIP"
+}
+
+gcrb() {
+    [[ -z "$1" ]] && { echo "Commit hash missing"; return 1; }
+
+    git commit --fixup=$1
+
+    local stash_created=0
+    if [[ -n "$(git status --porcelain)" ]]; then
+        git stash push --keep-index -m "Stashing changes before rebase"
+        stash_created=1
+    fi
+
+    GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash $1^
+
+    [[ "$stash_created" -eq 1 ]] && git stash pop
+}
+
+tagandrelease() {
+    git tag -a "$1" -m "$1" && git push upstream "$1" && gh release create "$1" --generate-notes
+}
+
+untagandunrelease() {
+    gh release delete "$1" --yes && git push upstream --delete "$1" && git tag -d "$1"
+}
+
+glb() {
+    local branch
+    branch=$(git lb | fzf --ansi --height 20 --reverse | awk '{print $NF}')
+    [[ -n "$branch" ]] && git checkout "$branch"
+}
+
+prdiff() {
+    [[ -z "$1" ]] && { echo "Usage: prdiff <target-branch>"; return 1; }
+    git rev-parse --verify --quiet "$1" >/dev/null || { echo "Branch '$1' does not exist"; return 1; }
+    git diff "$1...HEAD" | pbcopy
+    echo "Diff vs '$1' copied to clipboard"
+}
+
+# Symfony functions
+ss() {
+    APP_ENV=${1:-dev} symfony serve -d
+}
+
+sss() {
+    symfony server:stop
+}
+
+cc() {
+    if [[ -d "var" ]]; then
+        rm -fr var/cache
+        php -dxdebug.mode=off symfony console
+    elif [[ -d "tests/Application" ]]; then
+        cd tests/Application && rm -fr var/cache && symfony console
+    else
+        echo "Wrong directory"
+    fi
+}
+
+dbc() {
+    rm -fr private/invoices/*
+    bin/console doctrine:database:drop --force --if-exists
+    bin/console doctrine:database:create
+    bin/console doctrine:migrations:migrate -n
+    bin/console sylius:fixtures:load $1 -n
+}
+
+dbct() {
+    bin/console doctrine:database:create --if-not-exists --env=test
+    bin/console doctrine:schema:update --force --env=test
+}
+
+db_info() {
+    local env_file=".env.local"
+    [[ ! -f "$env_file" ]] && { echo "$env_file not found"; return 1; }
+
+    local db_url=$(grep DATABASE_URL $env_file | cut -d '=' -f2)
+    local kernel_env=$(grep "^APP_ENV=" $env_file 2>/dev/null | cut -d '=' -f2 || echo "dev")
+
+    echo "Database: $(echo $db_url | sed "s/%kernel.environment%/$kernel_env/g")"
+    echo "Environment: $kernel_env"
+}
+alias db=db_info
+
+# Yarn
+uberyarn() {
+    rm -fr node_modules/.cache public/build
+    yarn install
+    yarn build
+}
+
+# SSH keys
+porestarciekompa() {
+    ssh-add --apple-use-keychain ~/.ssh/GitHub
+    ssh-add --apple-use-keychain ~/.ssh/RPi-NAS
+    ssh-add --apple-use-keychain ~/.ssh/RPi-LAB
+    ssh-add -l
+}
+
+# Reset project
+cofankolite() {
+    git restore --staged .
+    git restore .
+    git clean -fd
+}
+
+cofanko() {
+    cofankolite
+    composer update
+    bin/console doctrine:database:drop --if-exists --force
+    bin/console doctrine:database:create --if-not-exists
+    bin/console doctrine:migrations:migrate -n
+}
+
+# WLED lights
+k() {
+    curl -s --request POST --url http://192.168.0.208/json/state --header 'Content-Type: application/json' --data '{"on": true}'
+    curl -s --request POST --url http://192.168.0.161/json/state --header 'Content-Type: application/json' --data '{"on": true}'
+    curl -s --request POST --url http://192.168.0.169/json/state --header 'Content-Type: application/json' --data '{"on": true}'
+}
+
+kk() {
+    curl -s --request POST --url http://192.168.0.208/json/state --header 'Content-Type: application/json' --data '{"on": false}'
+    curl -s --request POST --url http://192.168.0.161/json/state --header 'Content-Type: application/json' --data '{"on": false}'
+    curl -s --request POST --url http://192.168.0.169/json/state --header 'Content-Type: application/json' --data '{"on": false}'
+}
+
+# Xdebug
+phpstorm() {
+    export XDEBUG_SESSION_START=phpstorm
+    export XDEBUG_CONFIG="idkey=PHPSTORM"
+    export XDEBUG_SESSION=xdebug_is_great
+}
+
+# PR base branch
+cb() {
+    [[ -z "$1" ]] && { echo "Usage: cb <base_branch>"; return 1; }
+    export PR_BASE="$1"
+    echo "PR_BASE set to: $PR_BASE"
+}
+
+sb() {
+    echo "PR_BASE: ${PR_BASE:-origin/main (default)}"
+}
