@@ -122,10 +122,10 @@ fi
 if [ -n "$db" ]; then
   db=$(echo "$db" | sed "s/%kernel.environment%/$env/g")
 
-  # Resolve ${GIT_BRANCH}
+  # Resolve ${GIT_BRANCH} (replace / with _ for valid db name)
   if echo "$db" | grep -q 'GIT_BRANCH'; then
-    branch=$(git branch --show-current 2>/dev/null || echo "")
-    db=$(echo "$db" | sed "s/\${GIT_BRANCH}/$branch/g")
+    branch=$(git branch --show-current 2>/dev/null | tr '/' '_' || echo "")
+    db=$(echo "$db" | sed "s|\${GIT_BRANCH}|$branch|g")
   fi
 
   [ -n "$out" ] && out="$out | "
