@@ -104,7 +104,10 @@ xdebugoff() {
 
 # Interactive env selector
 setenv() {
-    local env=$(echo -e "dev\ntest\nprod" | fzf --height=5 --prompt="APP_ENV: ")
+    local env="$1"
+    if [ -z "$env" ]; then
+        env=$(echo -e "dev\ntest\nprod" | fzf --height=5 --prompt="APP_ENV: ")
+    fi
     if [ -n "$env" ]; then
         export APP_ENV="$env"
         echo "APP_ENV=$env"
