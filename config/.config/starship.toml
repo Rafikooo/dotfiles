@@ -1,13 +1,20 @@
+# Two-line prompt with project context
+
 format = """
 $directory\
 $git_branch\
 $git_status\
+$fill\
 $php\
 $nodejs\
 $python\
 $docker_context\
+$custom\
 $line_break\
 $character"""
+
+[fill]
+symbol = " "
 
 [directory]
 truncation_length = 3
@@ -22,6 +29,7 @@ format = '([$all_status$ahead_behind]($style) )'
 [php]
 symbol = " "
 format = "[$symbol$version]($style) "
+detect_files = ["composer.json", ".php-version", "*.php"]
 
 [nodejs]
 symbol = " "
@@ -38,3 +46,31 @@ format = "[$symbol$context]($style) "
 [character]
 success_symbol = "[❯](bold green)"
 error_symbol = "[❯](bold red)"
+
+# Custom: detect Sylius project
+[custom.sylius]
+command = "echo ''"
+when = "test -f composer.json && grep -q sylius composer.json"
+format = "[$output]($style) "
+style = "bold blue"
+
+# Custom: detect Expo/React Native project
+[custom.expo]
+command = "echo ''"
+when = "test -f app.json && grep -q expo app.json"
+format = "[$output]($style) "
+style = "bold cyan"
+
+# Custom: show DATABASE from .env.local
+[custom.database]
+command = "grep DATABASE_URL .env.local 2>/dev/null | sed 's/.*\\/\\([^?]*\\).*/\\1/' | head -1"
+when = "test -f .env.local"
+format = "[ $output]($style) "
+style = "yellow"
+
+# Custom: xdebug status
+[custom.xdebug]
+command = "echo ''"
+when = "test -n \"$XDEBUG_SESSION\""
+format = "[$output]($style) "
+style = "bold red"

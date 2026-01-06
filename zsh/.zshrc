@@ -1,7 +1,7 @@
 export ZSH="$HOME/.oh-my-zsh"
 export DEFAULT_USER="$(whoami)"
 
-plugins=(git jump zsh-autosuggestions)
+plugins=(git zsh-autosuggestions)
 
 source $ZSH/oh-my-zsh.sh
 

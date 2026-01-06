@@ -1,4 +1,4 @@
-# Git functions
+# Git
 wip() {
     git add .
     git commit -m "WIP"
@@ -34,14 +34,7 @@ glb() {
     [[ -n "$branch" ]] && git checkout "$branch"
 }
 
-prdiff() {
-    [[ -z "$1" ]] && { echo "Usage: prdiff <target-branch>"; return 1; }
-    git rev-parse --verify --quiet "$1" >/dev/null || { echo "Branch '$1' does not exist"; return 1; }
-    git diff "$1...HEAD" | pbcopy
-    echo "Diff vs '$1' copied to clipboard"
-}
-
-# Symfony functions
+# Symfony
 ss() {
     APP_ENV=${1:-dev} symfony serve -d
 }
@@ -74,31 +67,11 @@ dbct() {
     bin/console doctrine:schema:update --force --env=test
 }
 
-db_info() {
-    local env_file=".env.local"
-    [[ ! -f "$env_file" ]] && { echo "$env_file not found"; return 1; }
-
-    local db_url=$(grep DATABASE_URL $env_file | cut -d '=' -f2)
-    local kernel_env=$(grep "^APP_ENV=" $env_file 2>/dev/null | cut -d '=' -f2 || echo "dev")
-
-    echo "Database: $(echo $db_url | sed "s/%kernel.environment%/$kernel_env/g")"
-    echo "Environment: $kernel_env"
-}
-alias db=db_info
-
 # Yarn
 uberyarn() {
     rm -fr node_modules/.cache public/build
     yarn install
     yarn build
-}
-
-# SSH keys
-porestarciekompa() {
-    ssh-add --apple-use-keychain ~/.ssh/GitHub
-    ssh-add --apple-use-keychain ~/.ssh/RPi-NAS
-    ssh-add --apple-use-keychain ~/.ssh/RPi-LAB
-    ssh-add -l
 }
 
 # Reset project
@@ -116,33 +89,9 @@ cofanko() {
     bin/console doctrine:migrations:migrate -n
 }
 
-# WLED lights
-k() {
-    curl -s --request POST --url http://192.168.0.208/json/state --header 'Content-Type: application/json' --data '{"on": true}'
-    curl -s --request POST --url http://192.168.0.161/json/state --header 'Content-Type: application/json' --data '{"on": true}'
-    curl -s --request POST --url http://192.168.0.169/json/state --header 'Content-Type: application/json' --data '{"on": true}'
-}
-
-kk() {
-    curl -s --request POST --url http://192.168.0.208/json/state --header 'Content-Type: application/json' --data '{"on": false}'
-    curl -s --request POST --url http://192.168.0.161/json/state --header 'Content-Type: application/json' --data '{"on": false}'
-    curl -s --request POST --url http://192.168.0.169/json/state --header 'Content-Type: application/json' --data '{"on": false}'
-}
-
 # Xdebug
 phpstorm() {
     export XDEBUG_SESSION_START=phpstorm
     export XDEBUG_CONFIG="idkey=PHPSTORM"
     export XDEBUG_SESSION=xdebug_is_great
-}
-
-# PR base branch
-cb() {
-    [[ -z "$1" ]] && { echo "Usage: cb <base_branch>"; return 1; }
-    export PR_BASE="$1"
-    echo "PR_BASE set to: $PR_BASE"
-}
-
-sb() {
-    echo "PR_BASE: ${PR_BASE:-origin/main (default)}"
 }

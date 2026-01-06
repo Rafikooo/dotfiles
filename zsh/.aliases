@@ -4,9 +4,6 @@ alias gs='git status'
 alias gc='git commit -m'
 alias gcam='git commit --amend --no-edit'
 alias gcame='git commit --amend'
-alias gdc='git diff | pbcopy'
-alias gdcs='git diff --cached | pbcopy'
-alias gdmc='git diff main | pbcopy'
 alias gstash='git stash'
 alias gsp='git stash pop'
 alias gres='git restore'
@@ -19,12 +16,9 @@ alias gpc='gh pr checkout'
 alias s='symfony'
 alias c='composer'
 alias cs='composer show'
-alias sylver='composer show | grep sylius'
 alias p='symfony console'
 alias ssd='symfony serve -d'
 alias ssl='symfony server:list'
-alias dct='symfony console debug:container'
-alias dcf='symfony console debug:config'
 alias crld='rm -fr var/cache && symfony console'
 alias crldd='rm -fr var/cache/dev && symfony console'
 alias crldt='rm -fr var/cache/test && APP_ENV=test symfony console'
@@ -34,7 +28,6 @@ alias b='vendor/bin/behat'
 alias ba='vendor/bin/behat --suite-tags=api'
 alias bu='vendor/bin/behat --suite-tags=ui'
 alias unit='vendor/bin/phpunit --testdox'
-alias spec='vendor/bin/phpspec run --format=pretty'
 alias stan='vendor/bin/phpstan analyse'
 alias ecs='XDEBUG_MODE=off vendor/bin/ecs check --fix'
 
@@ -43,23 +36,10 @@ alias d='docker'
 alias dc='docker compose'
 alias dcomposer='docker compose exec php composer'
 
-# Navigation
-alias js='jump sylius'
-alias in='cd tests/Application'
-alias out='cd ../..'
-alias reload='source ~/.zshrc'
-
 # Utils
-alias t='task'
-alias gpt='chatgpt'
+alias reload='source ~/.zshrc'
 alias idea='echo .idea >> .git/info/exclude'
-alias chrome="/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome"
 alias screenshot='adb -s $(adb devices | grep "device$" | head -1 | cut -f1) exec-out screencap -p > /tmp/s.png && osascript -e "set the clipboard to (read \"/tmp/s.png\" as JPEG picture)"'
 
-# Zoxide helpers
-zc() { zoxide query "$@" | pbcopy && pbpaste; }
-zci() { zoxide query -i "$@" | pbcopy && pbpaste; }
-
-# SSH
-alias mikrusfrog='ssh frog@frog01.mikr.us -p 10468'
-alias mikrus='ssh root@srv22.mikr.us -p 10111'
+# iTerm window/tab naming
+n() { echo -ne "\033]0;$1\007"; }
