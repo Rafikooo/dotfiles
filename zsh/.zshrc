@@ -15,6 +15,12 @@ source ~/.secrets 2>/dev/null || echo "~/.secrets not found - create from secret
 autoload -U compinit && compinit
 zstyle ':completion:*' list-colors ''
 
+# Key bindings for Option+Arrow (word navigation over SSH)
+bindkey "^[[1;3D" backward-word
+bindkey "^[[1;3C" forward-word
+bindkey "^[^[[D" backward-word
+bindkey "^[^[[C" forward-word
+
 # Environment
 export GPG_TTY="$(tty)"
 export EDITOR=vim
