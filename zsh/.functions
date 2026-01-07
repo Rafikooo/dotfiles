@@ -106,7 +106,7 @@ xdebugoff() {
 setenv() {
     local env="$1"
     if [ -z "$env" ]; then
-        env=$(echo -e "dev\ntest\nprod" | fzf --height=-3 --prompt="APP_ENV: ")
+        env=$(echo -e "dev\ntest\nprod" | fzf --height=40% --prompt="APP_ENV: ")
     fi
     if [ -n "$env" ]; then
         export APP_ENV="$env"
@@ -161,7 +161,7 @@ setup() {
         "cache: clear"
     )
 
-    local choice=$(printf '%s\n' "${options[@]}" | fzf --height=-3 --reverse --prompt="setup> ")
+    local choice=$(printf '%s\n' "${options[@]}" | fzf --height=40% --reverse --prompt="setup> ")
     [[ -z "$choice" ]] && return 0
 
     case "$choice" in
@@ -234,7 +234,7 @@ _slash_commands() {
         fi
     done
 
-    local choice=$(printf '%s\n' "${commands[@]}" | fzf --height=-3 --reverse --prompt="/ " --with-nth=1 --delimiter=':' --preview='echo {2}' --preview-window=up:1 --bind='backward-eof:abort')
+    local choice=$(printf '%s\n' "${commands[@]}" | fzf --height=40% --reverse --prompt="/ " --with-nth=1 --delimiter=':' --preview='echo {2}' --preview-window=up:1 --bind='backward-eof:abort')
     local cmd=$(echo "$choice" | cut -d: -f1)
 
     [[ -z "$cmd" ]] && return
@@ -260,9 +260,9 @@ _slash_commands() {
         "/cache")       cc ;;
         # Dotfiles management
         "/alias add")   _dot_add_alias ;;
-        "/alias list")  cat ~/.aliases | grep "^alias" | fzf --height=-3 --reverse --prompt="aliases> " ;;
+        "/alias list")  cat ~/.aliases | grep "^alias" | fzf --height=40% --reverse --prompt="aliases> " ;;
         "/func add")    _dot_add_func ;;
-        "/func list")   grep "^[a-z_]*() {" ~/.functions | sed 's/() {//' | fzf --height=-3 --reverse --prompt="functions> " ;;
+        "/func list")   grep "^[a-z_]*() {" ~/.functions | sed 's/() {//' | fzf --height=40% --reverse --prompt="functions> " ;;
         "/dot edit")    vim ~/.dotfiles/zsh/.aliases ~/.dotfiles/zsh/.functions && source ~/.zshrc ;;
         "/dot sync")    _dot_sync ;;
         "/reload")      source ~/.zshrc && echo "Reloaded" ;;
