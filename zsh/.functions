@@ -184,28 +184,55 @@ setup() {
 
 # Slash commands (type / at start of line)
 _slash_commands() {
-    local commands=(
-        "/xdebug on:Enable xdebug"
-        "/xdebug off:Disable xdebug"
-        "/env dev:Set APP_ENV=dev"
-        "/env test:Set APP_ENV=test"
-        "/env prod:Set APP_ENV=prod"
-        "/env clear:Unset APP_ENV"
-        "/db migrate:Run migrations"
-        "/db reset:Drop + migrate + fixtures"
-        "/db name:Change database name"
-        "/server start:Start Symfony server"
-        "/server stop:Stop Symfony server"
-        "/docker up:Docker compose up -d"
-        "/docker down:Docker compose down"
-        "/docker ps:Docker compose ps"
-        "/cache:Clear cache"
-        "/reload:Reload shell config"
-        "/update:Update dotfiles"
+    local history_file="$HOME/.slash_history"
+    local -A all_commands=(
+        ["/xdebug on"]="Enable xdebug"
+        ["/xdebug off"]="Disable xdebug"
+        ["/env dev"]="Set APP_ENV=dev"
+        ["/env test"]="Set APP_ENV=test"
+        ["/env prod"]="Set APP_ENV=prod"
+        ["/env clear"]="Unset APP_ENV"
+        ["/db migrate"]="Run migrations"
+        ["/db reset"]="Drop + migrate + fixtures"
+        ["/db name"]="Change database name"
+        ["/server start"]="Start Symfony server"
+        ["/server stop"]="Stop Symfony server"
+        ["/docker up"]="Docker compose up -d"
+        ["/docker down"]="Docker compose down"
+        ["/docker ps"]="Docker compose ps"
+        ["/cache"]="Clear cache"
+        ["/reload"]="Reload shell config"
+        ["/update"]="Update dotfiles"
     )
+
+    # Build list: recent first, then rest
+    local commands=()
+    local -A seen=()
+
+    # Add recent commands first (from history)
+    if [[ -f "$history_file" ]]; then
+        while IFS= read -r cmd; do
+            if [[ -n "${all_commands[$cmd]}" && -z "${seen[$cmd]}" ]]; then
+                commands+=("$cmd:${all_commands[$cmd]}")
+                seen[$cmd]=1
+            fi
+        done < <(tail -20 "$history_file" | tac)
+    fi
+
+    # Add remaining commands
+    for cmd in "${(@k)all_commands}"; do
+        if [[ -z "${seen[$cmd]}" ]]; then
+            commands+=("$cmd:${all_commands[$cmd]}")
+        fi
+    done
 
     local choice=$(printf '%s\n' "${commands[@]}" | fzf --height=20 --reverse --prompt="/ " --with-nth=1 --delimiter=':' --preview='echo {2}' --preview-window=up:1 --bind='backward-eof:abort')
     local cmd=$(echo "$choice" | cut -d: -f1)
+
+    [[ -z "$cmd" ]] && return
+
+    # Save to history
+    echo "$cmd" >> "$history_file"
 
     case "$cmd" in
         "/xdebug on")   phpstorm && echo "Xdebug ON" ;;
