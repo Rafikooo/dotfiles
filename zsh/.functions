@@ -182,6 +182,75 @@ setup() {
     esac
 }
 
+# Slash commands (type / at start of line)
+_slash_commands() {
+    local commands=(
+        "/xdebug:Toggle xdebug on/off"
+        "/env:Set APP_ENV (dev/test/prod)"
+        "/db:Database operations"
+        "/server:Start/stop Symfony server"
+        "/docker:Docker compose up/down"
+        "/cache:Clear cache"
+        "/reload:Reload shell config"
+        "/update:Update dotfiles"
+    )
+
+    local choice=$(printf '%s\n' "${commands[@]}" | fzf --height=12 --reverse --prompt="/ " --with-nth=1 --delimiter=':' --preview='echo {2}' --preview-window=up:1)
+    local cmd=$(echo "$choice" | cut -d: -f1)
+
+    case "$cmd" in
+        "/xdebug")
+            if [ -n "$XDEBUG_SESSION" ]; then
+                xdebugoff && echo "Xdebug OFF"
+            else
+                phpstorm && echo "Xdebug ON"
+            fi
+            ;;
+        "/env")
+            local env=$(echo -e "dev\ntest\nprod\nclear" | fzf --height=6 --reverse --prompt="APP_ENV: ")
+            [ "$env" = "clear" ] && clearenv || [ -n "$env" ] && export APP_ENV="$env" && echo "APP_ENV=$env"
+            ;;
+        "/db")
+            local op=$(echo -e "migrate\nreset\nset name" | fzf --height=5 --reverse --prompt="db: ")
+            case "$op" in
+                "migrate") bin/console doctrine:migrations:migrate -n ;;
+                "reset") dbc ;;
+                "set name") setdb ;;
+            esac
+            ;;
+        "/server")
+            local op=$(echo -e "start\nstop" | fzf --height=4 --reverse --prompt="server: ")
+            [ "$op" = "start" ] && ss || [ "$op" = "stop" ] && sss
+            ;;
+        "/docker")
+            local op=$(echo -e "up\ndown\nps" | fzf --height=5 --reverse --prompt="docker: ")
+            case "$op" in
+                "up") docker compose up -d ;;
+                "down") docker compose down ;;
+                "ps") docker compose ps ;;
+            esac
+            ;;
+        "/cache") cc ;;
+        "/reload") source ~/.zshrc && echo "Reloaded" ;;
+        "/update") dotupdate ;;
+    esac
+}
+
+# ZLE widget: trigger on / at beginning of line
+_slash_widget() {
+    if [[ -z "$BUFFER" ]]; then
+        _slash_commands
+        zle reset-prompt
+    else
+        BUFFER+="/"
+        CURSOR+=1
+    fi
+}
+zle -N _slash_widget
+
+# Bind / to slash widget
+bindkey '/' _slash_widget
+
 # Update dotfiles from remote
 dotupdate() {
     echo "Updating dotfiles..."
