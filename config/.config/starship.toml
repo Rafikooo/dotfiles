@@ -123,9 +123,12 @@ fi
 if [ -n "$db" ]; then
   db=$(echo "$db" | sed "s/%kernel.environment%/$env/g")
 
-  # Resolve ${GIT_BRANCH} (replace / with _ for valid db name)
+  # Resolve ${GIT_BRANCH} - first from .env.local, then from git
   if echo "$db" | grep -q 'GIT_BRANCH'; then
-    branch=$(git branch --show-current 2>/dev/null | tr '/' '_' || echo "")
+    # Check if GIT_BRANCH is defined in .env.local
+    branch=$(grep '^GIT_BRANCH=' .env.local 2>/dev/null | cut -d= -f2 | tr -d '"'"'" | tr '/' '_')
+    # Fallback to git branch
+    [ -z "$branch" ] && branch=$(git branch --show-current 2>/dev/null | tr '/' '_' || echo "")
     db=$(echo "$db" | sed "s|\${GIT_BRANCH}|$branch|g")
   fi
 
