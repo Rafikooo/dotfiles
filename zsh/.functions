@@ -211,6 +211,14 @@ _slash_commands() {
         ["/dot sync"]="Push dotfiles to remote"
         ["/reload"]="Reload shell config"
         ["/update"]="Update dotfiles from remote"
+        # SSH commands
+        ["/ssh keys"]="List SSH keys"
+        ["/ssh agent"]="List keys in ssh-agent"
+        ["/ssh add"]="Add key to ssh-agent"
+        ["/ssh gen"]="Generate new SSH key"
+        ["/ssh copy"]="Copy public key to clipboard"
+        ["/ssh config"]="Edit SSH config"
+        ["/ssh connect"]="Connect to host from config"
     )
 
     # Build list: recent first, then rest
@@ -267,7 +275,73 @@ _slash_commands() {
         "/dot sync")    _dot_sync ;;
         "/reload")      source ~/.zshrc && echo "Reloaded" ;;
         "/update")      dotupdate ;;
+        # SSH
+        "/ssh keys")    _ssh_list_keys ;;
+        "/ssh agent")   ssh-add -l ;;
+        "/ssh add")     _ssh_add_key ;;
+        "/ssh gen")     _ssh_gen_key ;;
+        "/ssh copy")    _ssh_copy_key ;;
+        "/ssh config")  vim ~/.ssh/config ;;
+        "/ssh connect") _ssh_connect ;;
     esac
+}
+
+# SSH: List all keys
+_ssh_list_keys() {
+    echo "=== SSH Keys in ~/.ssh/ ==="
+    for key in ~/.ssh/id_*; do
+        [[ "$key" == *.pub ]] && continue
+        [[ -f "$key" ]] || continue
+        echo "\n$(basename $key):"
+        ssh-keygen -lf "$key" 2>/dev/null
+    done
+}
+
+# SSH: Add key to agent
+_ssh_add_key() {
+    local key=$(ls ~/.ssh/id_* 2>/dev/null | grep -v '.pub$' | fzf --height=40% --reverse --prompt="Add key: ")
+    [[ -n "$key" ]] && ssh-add "$key" && echo "Added: $key"
+}
+
+# SSH: Generate new key
+_ssh_gen_key() {
+    echo -n "Key name (e.g., id_github): "
+    read name
+    [[ -z "$name" ]] && return
+    echo -n "Email/comment: "
+    read email
+    [[ -z "$email" ]] && return
+
+    local keyfile="$HOME/.ssh/$name"
+    if [[ -f "$keyfile" ]]; then
+        echo "Key already exists: $keyfile"
+        return 1
+    fi
+
+    ssh-keygen -t ed25519 -C "$email" -f "$keyfile"
+    echo "\nPublic key:"
+    cat "${keyfile}.pub"
+
+    echo -n "\nCopy to clipboard? [Y/n] "
+    read copy
+    [[ ! "$copy" =~ ^[Nn]$ ]] && cat "${keyfile}.pub" | pbcopy && echo "Copied!"
+}
+
+# SSH: Copy public key to clipboard
+_ssh_copy_key() {
+    local key=$(ls ~/.ssh/*.pub 2>/dev/null | fzf --height=40% --reverse --prompt="Copy key: ")
+    if [[ -n "$key" ]]; then
+        cat "$key" | pbcopy 2>/dev/null || cat "$key" | xclip -selection clipboard 2>/dev/null
+        echo "Copied: $key"
+        echo "Contents:"
+        cat "$key"
+    fi
+}
+
+# SSH: Connect to host from config
+_ssh_connect() {
+    local host=$(grep "^Host " ~/.ssh/config 2>/dev/null | awk '{print $2}' | grep -v '\*' | fzf --height=40% --reverse --prompt="SSH to: ")
+    [[ -n "$host" ]] && ssh "$host"
 }
 
 # Add new alias interactively
