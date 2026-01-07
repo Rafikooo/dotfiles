@@ -186,6 +186,7 @@ setup() {
 _slash_commands() {
     local history_file="$HOME/.slash_history"
     local -A all_commands=(
+        # Project commands
         ["/xdebug on"]="Enable xdebug"
         ["/xdebug off"]="Disable xdebug"
         ["/env dev"]="Set APP_ENV=dev"
@@ -201,8 +202,15 @@ _slash_commands() {
         ["/docker down"]="Docker compose down"
         ["/docker ps"]="Docker compose ps"
         ["/cache"]="Clear cache"
+        # Dotfiles commands
+        ["/alias add"]="Add new alias"
+        ["/alias list"]="Show all aliases"
+        ["/func add"]="Add new function"
+        ["/func list"]="Show all functions"
+        ["/dot edit"]="Edit dotfiles in vim"
+        ["/dot sync"]="Push dotfiles to remote"
         ["/reload"]="Reload shell config"
-        ["/update"]="Update dotfiles"
+        ["/update"]="Update dotfiles from remote"
     )
 
     # Build list: recent first, then rest
@@ -250,9 +258,61 @@ _slash_commands() {
         "/docker down") docker compose down ;;
         "/docker ps")   docker compose ps ;;
         "/cache")       cc ;;
+        # Dotfiles management
+        "/alias add")   _dot_add_alias ;;
+        "/alias list")  cat ~/.aliases | grep "^alias" | fzf --height=20 --reverse --prompt="aliases> " ;;
+        "/func add")    _dot_add_func ;;
+        "/func list")   grep "^[a-z_]*() {" ~/.functions | sed 's/() {//' | fzf --height=20 --reverse --prompt="functions> " ;;
+        "/dot edit")    vim ~/.dotfiles/zsh/.aliases ~/.dotfiles/zsh/.functions && source ~/.zshrc ;;
+        "/dot sync")    _dot_sync ;;
         "/reload")      source ~/.zshrc && echo "Reloaded" ;;
         "/update")      dotupdate ;;
     esac
+}
+
+# Add new alias interactively
+_dot_add_alias() {
+    echo -n "Alias name: "
+    read name
+    [[ -z "$name" ]] && return
+    echo -n "Command: "
+    read cmd
+    [[ -z "$cmd" ]] && return
+
+    echo "alias $name='$cmd'" >> ~/.dotfiles/zsh/.aliases
+    source ~/.zshrc
+    echo "Added: alias $name='$cmd'"
+}
+
+# Add new function interactively
+_dot_add_func() {
+    echo -n "Function name: "
+    read name
+    [[ -z "$name" ]] && return
+    echo "Enter function body (end with empty line):"
+
+    local body=""
+    while IFS= read -r line; do
+        [[ -z "$line" ]] && break
+        body+="    $line"$'\n'
+    done
+
+    echo "\n$name() {\n$body}" >> ~/.dotfiles/zsh/.functions
+    source ~/.zshrc
+    echo "Added function: $name"
+}
+
+# Sync dotfiles to remote
+_dot_sync() {
+    cd ~/.dotfiles
+    git add -A
+    git status --short
+    echo -n "Commit message: "
+    read msg
+    [[ -z "$msg" ]] && msg="Update dotfiles"
+    git commit -m "$msg"
+    git push
+    echo "Dotfiles synced!"
 }
 
 # ZLE widget: trigger on / at beginning of line
