@@ -195,7 +195,7 @@ _slash_commands() {
         "/update:Update dotfiles"
     )
 
-    local choice=$(printf '%s\n' "${commands[@]}" | fzf --height=12 --reverse --prompt="/ " --with-nth=1 --delimiter=':' --preview='echo {2}' --preview-window=up:1)
+    local choice=$(printf '%s\n' "${commands[@]}" | fzf --height=12 --reverse --prompt="/ " --with-nth=1 --delimiter=':' --preview='echo {2}' --preview-window=up:1 --bind='backward-eof:abort')
     local cmd=$(echo "$choice" | cut -d: -f1)
 
     case "$cmd" in
