@@ -55,7 +55,6 @@ cc() {
 }
 
 dbc() {
-    rm -fr private/invoices/*
     bin/console doctrine:database:drop --force --if-exists
     bin/console doctrine:database:create
     bin/console doctrine:migrations:migrate -n
@@ -106,7 +105,7 @@ xdebugoff() {
 setenv() {
     local env="$1"
     if [ -z "$env" ]; then
-        env=$(echo -e "dev\ntest\nprod" | fzf --height=40% --prompt="APP_ENV: ")
+        env=$(echo -e "dev\ntest\nprod" | fzf --height=40% --prompt="APP_ENV: " --no-info --pointer=' ' --color='fg:8,fg+:15,bg+:-1,hl:6,hl+:14')
     fi
     if [ -n "$env" ]; then
         export APP_ENV="$env"
@@ -161,7 +160,7 @@ setup() {
         "cache: clear"
     )
 
-    local choice=$(printf '%s\n' "${options[@]}" | fzf --height=40% --reverse --prompt="setup> ")
+    local choice=$(printf '%s\n' "${options[@]}" | fzf --height=40% --reverse --prompt="setup> " --no-info --pointer=' ' --color='fg:8,fg+:15,bg+:-1,hl:6,hl+:14')
     [[ -z "$choice" ]] && return 0
 
     case "$choice" in
@@ -242,8 +241,15 @@ _slash_commands() {
         fi
     done
 
-    local choice=$(printf '%s\n' "${commands[@]}" | fzf --height=40% --reverse --prompt="/ " --with-nth=1 --delimiter=':' --preview='echo {2}' --preview-window=up:1 --bind='backward-eof:abort')
-    local cmd=$(echo "$choice" | cut -d: -f1)
+    local choice=$(printf '%s\n' "${commands[@]}" | awk -F: '{printf "%-20s\t%s\n", $1, $2}' | fzf \
+        --height=40% \
+        --reverse \
+        --prompt='/ ' \
+        --bind='backward-eof:abort' \
+        --no-info \
+        --pointer=' ' \
+        --color='fg:8,fg+:15,bg+:-1,hl:6,hl+:14')
+    local cmd=$(echo "$choice" | cut -f1 | xargs)
 
     [[ -z "$cmd" ]] && return
 
@@ -268,9 +274,9 @@ _slash_commands() {
         "/cache")       cc ;;
         # Dotfiles management
         "/alias add")   _dot_add_alias ;;
-        "/alias list")  cat ~/.aliases | grep "^alias" | fzf --height=40% --reverse --prompt="aliases> " ;;
+        "/alias list")  cat ~/.aliases | grep "^alias" | fzf --height=40% --reverse --prompt="aliases> " --no-info --pointer=' ' --color='fg:8,fg+:15,bg+:-1,hl:6,hl+:14' ;;
         "/func add")    _dot_add_func ;;
-        "/func list")   grep "^[a-z_]*() {" ~/.functions | sed 's/() {//' | fzf --height=40% --reverse --prompt="functions> " ;;
+        "/func list")   grep "^[a-z_]*() {" ~/.functions | sed 's/() {//' | fzf --height=40% --reverse --prompt="functions> " --no-info --pointer=' ' --color='fg:8,fg+:15,bg+:-1,hl:6,hl+:14' ;;
         "/dot edit")    vim ~/.dotfiles/zsh/.aliases ~/.dotfiles/zsh/.functions && source ~/.zshrc ;;
         "/dot sync")    _dot_sync ;;
         "/reload")      source ~/.zshrc && echo "Reloaded" ;;
@@ -284,6 +290,7 @@ _slash_commands() {
         "/ssh config")  vim ~/.ssh/config ;;
         "/ssh connect") _ssh_connect ;;
     esac
+    printf '\033[?25l'  # hide cursor immediately after command
 }
 
 # SSH: List all keys
@@ -299,7 +306,7 @@ _ssh_list_keys() {
 
 # SSH: Add key to agent
 _ssh_add_key() {
-    local key=$(ls ~/.ssh/id_* 2>/dev/null | grep -v '.pub$' | fzf --height=40% --reverse --prompt="Add key: ")
+    local key=$(ls ~/.ssh/id_* 2>/dev/null | grep -v '.pub$' | fzf --height=40% --reverse --prompt="Add key: " --no-info --pointer=' ' --color='fg:8,fg+:15,bg+:-1,hl:6,hl+:14')
     [[ -n "$key" ]] && ssh-add "$key" && echo "Added: $key"
 }
 
@@ -329,7 +336,7 @@ _ssh_gen_key() {
 
 # SSH: Copy public key to clipboard
 _ssh_copy_key() {
-    local key=$(ls ~/.ssh/*.pub 2>/dev/null | fzf --height=40% --reverse --prompt="Copy key: ")
+    local key=$(ls ~/.ssh/*.pub 2>/dev/null | fzf --height=40% --reverse --prompt="Copy key: " --no-info --pointer=' ' --color='fg:8,fg+:15,bg+:-1,hl:6,hl+:14')
     if [[ -n "$key" ]]; then
         cat "$key" | pbcopy 2>/dev/null || cat "$key" | xclip -selection clipboard 2>/dev/null
         echo "Copied: $key"
@@ -340,7 +347,7 @@ _ssh_copy_key() {
 
 # SSH: Connect to host from config
 _ssh_connect() {
-    local host=$(grep "^Host " ~/.ssh/config 2>/dev/null | awk '{print $2}' | grep -v '\*' | fzf --height=40% --reverse --prompt="SSH to: ")
+    local host=$(grep "^Host " ~/.ssh/config 2>/dev/null | awk '{print $2}' | grep -v '\*' | fzf --height=40% --reverse --prompt="SSH to: " --no-info --pointer=' ' --color='fg:8,fg+:15,bg+:-1,hl:6,hl+:14')
     [[ -n "$host" ]] && ssh "$host"
 }
 
@@ -394,6 +401,7 @@ _slash_widget() {
     if [[ -z "$BUFFER" ]]; then
         _slash_commands
         zle reset-prompt
+        { sleep 0.2; printf '\033[?25h'; } &!  # show cursor after delay
     else
         BUFFER+="/"
         CURSOR+=1
