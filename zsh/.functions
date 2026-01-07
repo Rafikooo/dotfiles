@@ -185,54 +185,46 @@ setup() {
 # Slash commands (type / at start of line)
 _slash_commands() {
     local commands=(
-        "/xdebug:Toggle xdebug on/off"
-        "/env:Set APP_ENV (dev/test/prod)"
-        "/db:Database operations"
-        "/server:Start/stop Symfony server"
-        "/docker:Docker compose up/down"
+        "/xdebug on:Enable xdebug"
+        "/xdebug off:Disable xdebug"
+        "/env dev:Set APP_ENV=dev"
+        "/env test:Set APP_ENV=test"
+        "/env prod:Set APP_ENV=prod"
+        "/env clear:Unset APP_ENV"
+        "/db migrate:Run migrations"
+        "/db reset:Drop + migrate + fixtures"
+        "/db name:Change database name"
+        "/server start:Start Symfony server"
+        "/server stop:Stop Symfony server"
+        "/docker up:Docker compose up -d"
+        "/docker down:Docker compose down"
+        "/docker ps:Docker compose ps"
         "/cache:Clear cache"
         "/reload:Reload shell config"
         "/update:Update dotfiles"
     )
 
-    local choice=$(printf '%s\n' "${commands[@]}" | fzf --height=12 --reverse --prompt="/ " --with-nth=1 --delimiter=':' --preview='echo {2}' --preview-window=up:1 --bind='backward-eof:abort')
+    local choice=$(printf '%s\n' "${commands[@]}" | fzf --height=20 --reverse --prompt="/ " --with-nth=1 --delimiter=':' --preview='echo {2}' --preview-window=up:1 --bind='backward-eof:abort')
     local cmd=$(echo "$choice" | cut -d: -f1)
 
     case "$cmd" in
-        "/xdebug")
-            if [ -n "$XDEBUG_SESSION" ]; then
-                xdebugoff && echo "Xdebug OFF"
-            else
-                phpstorm && echo "Xdebug ON"
-            fi
-            ;;
-        "/env")
-            local env=$(echo -e "dev\ntest\nprod\nclear" | fzf --height=6 --reverse --prompt="APP_ENV: ")
-            [ "$env" = "clear" ] && clearenv || [ -n "$env" ] && export APP_ENV="$env" && echo "APP_ENV=$env"
-            ;;
-        "/db")
-            local op=$(echo -e "migrate\nreset\nset name" | fzf --height=5 --reverse --prompt="db: ")
-            case "$op" in
-                "migrate") bin/console doctrine:migrations:migrate -n ;;
-                "reset") dbc ;;
-                "set name") setdb ;;
-            esac
-            ;;
-        "/server")
-            local op=$(echo -e "start\nstop" | fzf --height=4 --reverse --prompt="server: ")
-            [ "$op" = "start" ] && ss || [ "$op" = "stop" ] && sss
-            ;;
-        "/docker")
-            local op=$(echo -e "up\ndown\nps" | fzf --height=5 --reverse --prompt="docker: ")
-            case "$op" in
-                "up") docker compose up -d ;;
-                "down") docker compose down ;;
-                "ps") docker compose ps ;;
-            esac
-            ;;
-        "/cache") cc ;;
-        "/reload") source ~/.zshrc && echo "Reloaded" ;;
-        "/update") dotupdate ;;
+        "/xdebug on")   phpstorm && echo "Xdebug ON" ;;
+        "/xdebug off")  xdebugoff && echo "Xdebug OFF" ;;
+        "/env dev")     export APP_ENV=dev && echo "APP_ENV=dev" ;;
+        "/env test")    export APP_ENV=test && echo "APP_ENV=test" ;;
+        "/env prod")    export APP_ENV=prod && echo "APP_ENV=prod" ;;
+        "/env clear")   clearenv ;;
+        "/db migrate")  bin/console doctrine:migrations:migrate -n ;;
+        "/db reset")    dbc ;;
+        "/db name")     setdb ;;
+        "/server start") ss ;;
+        "/server stop") sss ;;
+        "/docker up")   docker compose up -d ;;
+        "/docker down") docker compose down ;;
+        "/docker ps")   docker compose ps ;;
+        "/cache")       cc ;;
+        "/reload")      source ~/.zshrc && echo "Reloaded" ;;
+        "/update")      dotupdate ;;
     esac
 }
 
