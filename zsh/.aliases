@@ -47,3 +47,9 @@ n() { echo -ne "\033]0;$1\007"; }
 # Utils - count lines/occurrences
 alias countlines='wc -l'
 alias count='wc -l'
+
+# File browsing (fzf + bat + yazi + lazygit)
+alias f='fzf --preview "bat --color=always --style=numbers {}" --bind "enter:become(vim {})"'
+alias sg='rg --line-number --color=always . | fzf --ansi --delimiter ":" --preview "bat --color=always {1} --highlight-line {2} --line-range {2}:" --bind "enter:become(vim {1} +{2})"'
+alias y='yazi'
+alias lg='lazygit'

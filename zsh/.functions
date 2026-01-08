@@ -195,6 +195,7 @@ _slash_commands() {
         ["/db migrate"]="Run migrations"
         ["/db reset"]="Drop + migrate + fixtures"
         ["/db name"]="Change database name"
+        ["/db switch"]="Switch between MySQL and PostgreSQL"
         ["/server start"]="Start Symfony server"
         ["/server stop"]="Stop Symfony server"
         ["/docker up"]="Docker compose up -d"
@@ -210,6 +211,10 @@ _slash_commands() {
         ["/dot sync"]="Push dotfiles to remote"
         ["/reload"]="Reload shell config"
         ["/update"]="Update dotfiles from remote"
+        # Setup commands
+        ["/setup claude"]="Run Claude Code setup script"
+        # Copy commands
+        ["/copy path"]="Copy current directory to clipboard"
         # SSH commands
         ["/ssh keys"]="List SSH keys"
         ["/ssh agent"]="List keys in ssh-agent"
@@ -243,12 +248,14 @@ _slash_commands() {
 
     local choice=$(printf '%s\n' "${commands[@]}" | awk -F: '{printf "%-20s\t%s\n", $1, $2}' | fzf \
         --height=40% \
-        --reverse \
+        --layout=reverse-list \
         --prompt='/ ' \
-        --bind='backward-eof:abort' \
+        --delimiter=$'\t' \
+        --bind='backward-eof:abort,tab:transform-query:echo {1} | sed "s|^/||"' \
         --no-info \
         --pointer=' ' \
-        --color='fg:8,fg+:15,bg+:-1,hl:6,hl+:14')
+        --marker=' ' \
+        --color='fg:8,fg+:15,bg+:-1,hl:6,hl+:14,gutter:-1')
     local cmd=$(echo "$choice" | cut -f1 | xargs)
 
     [[ -z "$cmd" ]] && return
@@ -266,6 +273,7 @@ _slash_commands() {
         "/db migrate")  bin/console doctrine:migrations:migrate -n ;;
         "/db reset")    dbc ;;
         "/db name")     setdb ;;
+        "/db switch")   _db_switch ;;
         "/server start") ss ;;
         "/server stop") sss ;;
         "/docker up")   docker compose up -d ;;
@@ -281,6 +289,10 @@ _slash_commands() {
         "/dot sync")    _dot_sync ;;
         "/reload")      source ~/.zshrc && echo "Reloaded" ;;
         "/update")      dotupdate ;;
+        # Setup
+        "/setup claude") ~/code/claude-config/setup-claude ;;
+        # Copy
+        "/copy path")   _copy_to_clipboard "$(pwd)" && echo "Copied: $(pwd)" ;;
         # SSH
         "/ssh keys")    _ssh_list_keys ;;
         "/ssh agent")   ssh-add -l ;;
@@ -291,6 +303,96 @@ _slash_commands() {
         "/ssh connect") _ssh_connect ;;
     esac
     printf '\033[?25l'  # hide cursor immediately after command
+}
+
+# Switch database between MySQL and PostgreSQL
+_db_switch() {
+    local current=""
+    local source_file=""
+
+    # Check .env.local first, then .env
+    if [[ -f .env.local ]] && grep -q '^DATABASE_URL=' .env.local; then
+        current=$(grep '^DATABASE_URL=' .env.local | head -1)
+        source_file=".env.local"
+    elif [[ -f .env ]] && grep -q '^DATABASE_URL=' .env; then
+        current=$(grep '^DATABASE_URL=' .env | head -1)
+        source_file=".env"
+    else
+        echo "No DATABASE_URL found in .env.local or .env"
+        return 1
+    fi
+
+    local current_type=""
+    if echo "$current" | grep -q "mysql://"; then
+        current_type="mysql"
+    elif echo "$current" | grep -qE "(postgresql|pgsql)://"; then
+        current_type="pgsql"
+    else
+        echo "Unknown database type in: $current"
+        return 1
+    fi
+
+    local target=""
+    if [[ "$current_type" == "mysql" ]]; then
+        target="pgsql"
+    else
+        target="mysql"
+    fi
+
+    # Extract database name and query string from URL
+    local dbname=$(echo "$current" | sed -E 's|.*[/@]([^?/@]+)(\?.*)?$|\1|')
+    local query=$(echo "$current" | grep -o '?.*' || echo "")
+
+    # Fix charset for target database (utf8mb4 for mysql, utf8 for pgsql)
+    if [[ "$target" == "pgsql" ]]; then
+        query=$(echo "$query" | sed 's/charset=utf8mb4/charset=utf8/g')
+    else
+        query=$(echo "$query" | sed -E 's/charset=utf8([^m]|$)/charset=utf8mb4\1/g')
+    fi
+
+    local new_url=""
+    if [[ "$target" == "pgsql" ]]; then
+        new_url="DATABASE_URL=pgsql://postgres:postgres@127.0.0.1/${dbname}${query}"
+    else
+        new_url="DATABASE_URL=mysql://root@127.0.0.1/${dbname}${query}"
+    fi
+
+    # Always save to .env.local (remove old line, append new)
+    if [[ -f .env.local ]]; then
+        grep -v '^DATABASE_URL=' .env.local > .env.local.tmp && mv .env.local.tmp .env.local
+    fi
+    echo "$new_url" >> .env.local
+    echo "Switched to $target: $new_url"
+
+    # Update .env.test.local if exists
+    if [[ -f .env.test.local ]] && grep -q '^DATABASE_URL=' .env.test.local; then
+        local test_current=$(grep '^DATABASE_URL=' .env.test.local | head -1)
+        local test_dbname=$(echo "$test_current" | sed -E 's|.*[/@]([^?/@]+)(\?.*)?$|\1|')
+        local test_query=$(echo "$test_current" | grep -o '?.*' || echo "")
+        local test_new=""
+        if [[ "$target" == "pgsql" ]]; then
+            test_new="DATABASE_URL=pgsql://postgres:postgres@127.0.0.1/${test_dbname}${test_query}"
+        else
+            test_new="DATABASE_URL=mysql://root@127.0.0.1/${test_dbname}${test_query}"
+        fi
+        grep -v '^DATABASE_URL=' .env.test.local > .env.test.local.tmp && mv .env.test.local.tmp .env.test.local
+        echo "$test_new" >> .env.test.local
+        echo "Updated .env.test.local"
+    fi
+}
+
+# Cross-platform clipboard
+_copy_to_clipboard() {
+    if command -v pbcopy &>/dev/null; then
+        echo -n "$1" | pbcopy
+    elif command -v xclip &>/dev/null; then
+        echo -n "$1" | xclip -selection clipboard
+    elif command -v xsel &>/dev/null; then
+        echo -n "$1" | xsel --clipboard
+    else
+        echo "No clipboard tool found" >&2
+        return 1
+    fi
 }
 
 # SSH: List all keys
@@ -331,14 +433,14 @@ _ssh_gen_key() {
 
     echo -n "\nCopy to clipboard? [Y/n] "
     read copy
-    [[ ! "$copy" =~ ^[Nn]$ ]] && cat "${keyfile}.pub" | pbcopy && echo "Copied!"
+    [[ ! "$copy" =~ ^[Nn]$ ]] && _copy_to_clipboard "$(cat "${keyfile}.pub")" && echo "Copied!"
 }
 
 # SSH: Copy public key to clipboard
 _ssh_copy_key() {
     local key=$(ls ~/.ssh/*.pub 2>/dev/null | fzf --height=40% --reverse --prompt="Copy key: " --no-info --pointer=' ' --color='fg:8,fg+:15,bg+:-1,hl:6,hl+:14')
     if [[ -n "$key" ]]; then
-        cat "$key" | pbcopy 2>/dev/null || cat "$key" | xclip -selection clipboard 2>/dev/null
+        _copy_to_clipboard "$(cat "$key")"
         echo "Copied: $key"
         echo "Contents:"
         cat "$key"
@@ -400,7 +502,7 @@ _dot_sync() {
 _slash_widget() {
     if [[ -z "$BUFFER" ]]; then
         _slash_commands
-        zle reset-prompt
+        zle -I  # invalidate display, trigger redraw
         { sleep 0.2; printf '\033[?25h'; } &!  # show cursor after delay
     else
         BUFFER+="/"
